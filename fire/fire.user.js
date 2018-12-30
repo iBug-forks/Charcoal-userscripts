@@ -5,7 +5,7 @@
 // @author      Cerbrus
 // @contributor Makyen
 // @attribution Michiel Dommerholt (https://github.com/Cerbrus)
-// @version     1.1.0
+// @version     1.1.1
 // @icon        https://raw.githubusercontent.com/Ranks/emojione-assets/master/png/32/1f525.png
 // @updateURL   https://raw.githubusercontent.com/Charcoal-SE/Userscripts/master/fire/fire.meta.js
 // @downloadURL https://raw.githubusercontent.com/Charcoal-SE/Userscripts/master/fire/fire.user.js
@@ -1499,18 +1499,15 @@
       if (data.has_sent_feedback) {
         const message = span('You have already sent feedback to metasmoke for this report.');
         if (verdict === 'tpu-') {
-          postMetaSmokeSpamFlag(data, ms, token, message.after('<br /><br />'));
+          postMetaSmokeSpamFlag(data, ms, token, message.after('<br /><br />'), 'spam');
+        } else if (verdict === 'rude') {
+          postMetaSmokeSpamFlag(data, ms, token, message.after('<br /><br />'), 'abusive');
         } else {
           toastr.info(message);
           closePopup();
         }
       } else {
         let msVerdict = verdict;
-        if (verdict === 'rude') {
-          msVerdict = 'tpu-';
-          toastr.info('"Rude / Abusive" flagging isn\'t implemented yet.<br />' +
-            'If you wish to flag this as well, please select "tpu-"');
-        }
 
         $.ajax({
           type: 'POST',
@@ -1520,7 +1517,9 @@
         .done(() => {
           const message = span(`Sent feedback "<em>${verdict}"</em> to metasmoke.`);
           if (verdict === 'tpu-' && fire.userData.flag) {
-            postMetaSmokeSpamFlag(data, ms, token, message.after('<br /><br />'));
+            postMetaSmokeSpamFlag(data, ms, token, message.after('<br /><br />'), 'spam');
+          } else if (verdict === 'rude' && fire.userData.flag) {
+            postMetaSmokeSpamFlag(data, ms, token, message.after('<br /><br />'), 'abusive');
           } else {
             toastr.success(message);
             closePopup();
@@ -1560,7 +1559,7 @@
    * @param   {object} feedbackSuccess A jQuery DOM node containing the feedback success message.
    * @returns {undefined}              returns undefined to break out of the function.
    */
-  function postMetaSmokeSpamFlag(data, {url, key}, token, feedbackSuccess) {
+  function postMetaSmokeSpamFlag(data, {url, key}, token, feedbackSuccess, flag_type) {
     /* TODO: fix this
     let site = fire.sites[data.site];
     if (!site.account) {
@@ -1579,11 +1578,15 @@
     } else {
       $.ajax({
         type: 'POST',
-        url: `${url}posts/${data.id}/flag`,
+        url: `${url}posts/${data.id}/flag?flag_type=${flag_type}`,
         data: {key, token}
       })
       .done(response => {
-        toastr.success(feedbackSuccess.after(span('Successfully flagged the post as "spam".')));
+        if (flag_type === "spam") {
+          toastr.success(feedbackSuccess.after(span('Successfully flagged the post as "spam".')));
+        } else if (flag_type === "abusive") {
+          toastr.success(feedbackSuccess.after(span('Successfully flagged the post as "rude or abusive".')));
+        }
         closePopup();
 
         if (response.backoff) {
